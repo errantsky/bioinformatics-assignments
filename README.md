@@ -1,5 +1,5 @@
 # Bioinformatics Assignments
-Solutions to my Bioinformatics course in Python and R
+Solutions to Bioinformatics course assignments in Python and R. I took this graduate course in 2017 during my undergrdaute study.
 
 
 ## Homework 2 in Python
