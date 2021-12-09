@@ -1,0 +1,232 @@
+---
+title: "bio-workshop2-assignment"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Introduction to Bioinformatics
+## Assignment two
+## Sepehr Torabparhiz
+## 93100774
+
+
+## 1. Galton’s father and son heights:
+### 1.1 load Galton’s data by these commands:
+```{r}
+install.packages("UsingR")
+data("father.son",package="UsingR")
+```
+
+### 1.2 Compare the mean and the median of the father and the sons using ggplot box-plots
+Sons are generally taller than their fathers.
+Dashed lines are the means of each column.
+```{r}
+library("ggplot2", "dplyr", "data.table", "reshape2")
+
+ggplot(data = melt(father.son), aes(x = variable, y = value)) + geom_boxplot(aes(fill = variable))  +
+    stat_summary(fun.y = mean, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..),
+                 width = .75, linetype = "dashed")
+```
+
+### 1.3 predict the height of the parents of the sons that have 60,80,100-inch heights and describe your model and its standard error.
+
+hint: use lm() and predict function
+
+The model and the standard error can be seen from the summary function.
+```{r}
+inp <- father.son$sheight
+out <- father.son$fheight
+height_model <- lm(out ~ inp)
+predict(height_model, data.frame(inp = c(60, 80, 100)))
+summary(height_model)
+```
+
+## 2. Dimension Reduction
+We introduce a dataset with gene expression measurements for 22,215 genes from 189 samples. The R objects can be downloaded like this:
+
+```{r}
+library(devtools)
+install_github("genomicsclass/tissuesGeneExpression")
+library(tissuesGeneExpression)
+data(tissuesGeneExpression)
+```
+
+### 2.1. Quick look at the data
+```{r}
+head(e)
+head(tissue)
+dim(e) ##e contains the expression data
+table(tissue) ##tissue[i] tells us what tissue is represented by e[,i]
+```
+
+The distance between samples i
+ and j
+ can be written as
+
+$$dist(i,j)=(Yi−Yj)^{T}(Yi−Yj)$$
+
+with $Yi$ and $Yj$ columns $i$ and $j$
+. This result can be very convenient in practice as computations can be made much faster using matrix multiplication.
+
+### 2.2. Compute distance between samples 1 and 2, both kidneys, and then to sample 87, a colon first by matrix-multipication and with dist() function
+
+
+```{r}
+dist1 = t(e[,1] - e[,2]) %*% (e[,1] - e[,2])
+dist1_alt = dist(e[,1] - e[,2], "manhattan")
+
+dist2 = t(e[,1] - e[,87]) %*% (e[,1] - e[,87])
+dist2_alt = dist(e[,1] - e[,87], "manhattan")
+```
+
+### 2.4 How many biological replicates for hippocampus?
+The data represents RNA expression levels for eight tissues, each with several biological replictes. We call samples that we consider to be from the same population, such as liver tissue from different individuals, biological replicates:
+```{r}
+hippocamous_count = sum(tissue == "hippocampus")
+hippocamous_count
+```
+
+### 2.5 SVD
+To simplify the illustration we will only consider three tissues, so keep only the kindey, colon and liver tissue data. After that, subtract the rowmeans and apply svd() on them. Plot the 2-dimention compressed data using the first 2-PCs and assign them a color by their tissue type. Explain the results.
+
+#### A:
+We can see that the first two PCs capture a reasonable amount of variance in the data. The 3 clusters are clearly separated from each other. 
+```{r}
+simple_e <- e[,tissue == "kidney" | tissue == "colon" | tissue == "liver"]
+simple_tissues <- tissue[tissue == "kidney" | tissue == "colon" | tissue == "liver"]
+rmeans <- rowMeans(simple_e)
+simple_e_m <- simple_e - rmeans
+simple_e_svd <- svd(simple_e_m)
+plot(simple_e_svd$v[, 1], simple_e_svd$v[, 2], col = factor(simple_tissues), xlab = "PC1", ylab = "PC2")
+
+
+```
+
+### 2.6. How many PCs we need to keep 80% or more of the data variances? use plot and show the total variances by number of PCs.
+
+#### A:
+12 PCs should are needed to cover at least 80% of the data variances.
+
+```{r}
+plot(simple_e_svd$d^2/sum(simple_e_svd$d^2), xlim = c(0, 15), type = "b", pch = 16, xlab = "principal components", ylab = "variance explained")
+
+plot(cumsum(simple_e_svd$d^2)/sum(simple_e_svd$d^2), xlim = c(0, 60), type = "b", pch = 16, xlab = "number of principal components", ylab = "total variance explained")
+
+which (cumsum(simple_e_svd$d^2)/sum(simple_e_svd$d^2) >= 0.8)[1]
+
+```
+
+
+### 2.7. You can use  cmdscale() which is more faster if you only need first k PCs. Search this function and used it instead of svd.
+```{r}
+
+pcs<- cmdscale(dist(t(simple_e_m)),eig=TRUE,k=2)
+plot(pcs$points[,1], pcs$points[,2], col = factor(simple_tissues), xlab = "PC1", ylab = "PC2")
+
+```
+
+### 2.8. R has a function for PCA that is very easy instead of the 2 approaches of above. Now use prcomp() and explain how is it related with the SVD then plot first component of svd by the first prcomp.
+
+#### A:
+
+```{r}
+bpc <- prcomp(simple_e_m)
+plot(bpc$rotation[,1], bpc$rotation[, 2], col = factor(simple_tissues), xlab = "prcomp PC1", ylab = "prcomp PC2")
+plot(bpc$rotation[, 1], simple_e_svd$v[, 1], col = factor(simple_tissues), xlab = "prcomp PC1", ylab = "svd PC1")
+
+
+```
+
+
+#### 2.9 Use t-SNE to draw the data on the 2-dimensions. And compare it with PCA.
+```{r}
+#install.packages("Rtsne") R wrapper around fast c++ code :)
+library("Rtsne")
+tsne <- Rtsne(t(simple_e), dims = 2, perplexity=30, verbose=TRUE, max_iter = 500, check_duplicates = FALSE)
+```
+```{r}
+# Islands should be seen
+d_tsne_1 = as.data.frame(tsne$Y)  
+ggplot(d_tsne_1, aes(x=V1, y=V2)) +  
+  geom_point(size=0.25) +
+  xlab("PC1") + ylab("PC2") +
+  ggtitle("t-SNE")
+
+plot(bpc$rotation[, 1], tsne$Y[, 1], col = factor(simple_tissues), xlab = "PCA PC1", ylab = "t-SNE PC1")
+
+```
+
+
+## 3. Clustering
+### 3.1. Use Hierarchical Clustering on the dataset above(all tissue without any filter) and plot the result
+```{r}
+clusters <- hclust(dist(t(e)))
+plot(clusters)
+```
+
+### 3.2. Cut the clustering on the appropriate levels using cutree and compare these clusters with original tissue types.
+
+#### A:
+Each column can tell us how good the clustring has been done. For example all endometrium samples have been assigned to a single cluster while hippocampus samples are divided into two clusters, meaning that clustring has failed for this tissue type.
+```{r}
+clusters_cut <- cutree(clusters, length(unique(tissue)))
+table(clusters_cut, tissue)
+```
+
+### 3.3. Cluster the data using k-means algorithm first by only first 2 genes and plot them and compare the clusters with original tissues.
+```{r}
+km_clusters <- kmeans(t(e[1:2, ]), centers = length(unique(tissue)))
+```
+```{r}
+te <- t(e)
+plot(km_clusters$cluster, col = as.numeric(km_clusters$cluster))
+```
+
+
+### 3.4. Cluster using all genes and visualize the them by using dimension reduction algorithm(PCA/tsne/…)
+```{r}
+km_all_clusters <- kmeans(t(e), length(unique(tissue)))
+km_pca <- svd(e - rowMeans(e))
+plot(km_pca$d^2/sum(km_pca$d^2), xlim = c(0, 15), type = "b", pch = 16, xlab = "principal components", ylab = "variance explained")
+
+plot(km_pca$v[, 1], km_pca$v[, 2], col = factor(tissue), xlab = "PC1", ylab = "PC2")
+
+
+```
+
+### 3.5. Heatmap
+
+Load the data:
+
+```{r}
+install_github("genomicsclass/GSE5859Subset")
+library(GSE5859Subset)
+data(GSE5859Subset)
+
+```
+Pick the 25 genes with the highest across sample variance. This function might help:
+
+```{r}
+install.packages("matrixStats")
+library(matrixStats)
+?rowMads ##we use mads due to a outlier sample
+```
+```{r}
+genes_std <- rowMads(geneExpression)
+genes_std_sorted <- sort(genes_std, index.return = TRUE, decreasing = TRUE)
+genes_big25_inds <- head(genes_std_sorted$ix, 25)
+gene_sample <- geneExpression[genes_big25_inds,]
+```
+
+Use heatmap.2 to make a heatmap showing the sampleInfo$group with color, the date as labels, the rows labelled with chromosome, and scaling the rows.
+
+```{r}
+library("gplots")
+
+heatmap.2(as.matrix(gene_sample), labRow = geneAnnotation$CHR, labCol = sampleInfo$date, col = sampleInfo$group, scale = "row")
+```
+

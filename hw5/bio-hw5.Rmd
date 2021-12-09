@@ -1,0 +1,265 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+# Sepehr Torab Parhiz 93100774
+# Bio HW5
+## Question 1: City of Red & Blue Bacteria
+
+```{r}
+library(ggplot2)
+derby <- file(description = "derby.txt", open = "r")
+lns = readLines(derby)
+b_count <- sum(lns == 'b')
+r_count <- sum(lns == 'r')
+
+df <- data.frame(name=c('Red', 'Blue'),
+                 count=c(r_count, b_count))
+p <- ggplot(df, aes(x=name, y=count, fill=name)) + geom_bar(stat = "identity") +
+  theme_minimal() +
+  scale_fill_manual(values = c("#0000FF", "#FF0000"))
+
+p
+
+```
+
+The population seem to be fans of the red team.
+Now, we consider the likelihood ratio of the city being fans of the red or blue team having observed the data in derpy.txt.
+$$ \frac{\mathcal{L}(\text{blue fan city})}{\mathcal{L}(\text{red fan city})} = \frac{(0.25)^{7520}(0.75)^{2479}}{(0.75)^{7520}(0.25)^{2479}}=\frac{(0.25)^{5041}}{(0.75)^{5041}}=\frac{1}{3}^{5041}$$
+This very small value means that having seen the data, it is very unlikely that the city was a blue team fan.
+
+## Question 2: Powerful Region
+
+According to Neyman-Pearson lemma, the ratio of the likelihoods of the $\mu_{0}$ and $\mu_{1}$ should be less than or equal to some value k.
+
+$$ \frac{\mathcal{L}(\mu_{0})}{\mathcal{L}(\mu_{1})} = \frac{(2n\pi)^{-\frac{n}{2}} exp[-\frac{1}{2n}\sum^{n}_{i=1}(x_{i}-\mu_{0})^{2}]} {(2n\pi)^{-\frac{n}{2}} exp[-\frac{1}{2n}\sum^{n}_{i=1}(x_{i}-\mu_{1})^{2}]} \leq k$$
+Which can be simplfied to:
+$$ exp[-\frac{1}{2n}(\sum^{n}_{i=1}(x_{i}-\mu_{0})^{2}-\sum^{n}_{i=1}(x_{i} - \mu_{1})^{2})]\leq k $$ 
+By taking the logarithm of each side we have:
+
+$$ -\sum^{n}_{i=1}(x_{i}-\mu_{0})^{2}+\sum^{n}_{i=1}(x_{i} - \mu_{1})^{2} \leq 2n \ ln(k) \\ \rightarrow 2(\mu_{0}-\mu_{1})\sum^{n}_{i=1}x_{i}+ (\mu^{2}_{1}-\mu^{2}_{0}) \leq 2n \ ln(k) \\ \rightarrow \sum^{n}_{i=1}x_{i} \leq \frac{(2n \ ln(k) - (\mu^{2}_{1}-\mu^{2}_{0}))}{2(\mu_{0}-\mu_{1})} \\ \rightarrow \frac{\sum^{n}_{i=1}x_{i}}{n} \leq \frac{(2n \ ln(k) - (\mu^{2}_{1}-\mu^{2}_{0}))}{2n(\mu_{0}-\mu_{1})} \\ \rightarrow \bar{x} \leq \frac{(2n \ ln(k) - (\mu^{2}_{1}-\mu^{2}_{0}))}{2n(\mu_{0}-\mu_{1})} \\ \rightarrow \bar{x} \leq k'$$
+
+After finding the value of $k'$ by using the value of $alpha$ and $\mu$ under the normal distribution assumption we find the power of the test.
+
+$$ Pr(\bar{X} \leq k' | \mu=\mu_{1})=Pr(Z \leq \frac{k' - \mu_{1}}{\sqrt{n}/\sqrt{n}})$$
+
+
+## Question 3: Microarray
+### Q3 part 1: Theoretical Questions
+
+1. 
+
+ In Hypothesis testing we reject the null hypothesis saying that if the probability of observing out sample under the null hypothesis is low. In computing t-tests and testing multiple hypotheses like in this case, the likelihood of observing signifcant results by chance and rejecting $H_{0}$ when it is true increases.
+
+2. 
+
+ The Bonferroni correction tries to fix the increased chance of making type I error discussed above by testing each of the hypotheses at the significance level $\frac{\alpha}{m}$ instead of $\alpha$ where $m$ is the number of hypotheses we are testing, which is 10000 here. To put it differently, The Bonferroni correction controls Familywise Error Rate or FWER, which is the probability of making at least one type I error. This method controls FWER at values less than or equal to $\alpha$
+
+Considering Bool's Inequality for countable set of events like $A_{i}$: $Pr(\cup_{i}A_{i})\leq \sum_{i}Pr(A_{i})$
+
+$$ FWER=Pr(\cup_{i=1}^{m}(p_{i}\leq \frac{\alpha}{m})) \leq \sum^{m}_{i=1}(Pr(p_{i}\leq \frac{\alpha}{m}))=m\frac{\alpha}{m}\leq m\frac{\alpha}{m}=\alpha$$
+
+The disadvantage of the Bonferroni method is that it might be too conservative, meaning that it increases the false negative rate or decreases power. It also increases the probability of declaring false negatives.
+
+
+3. 
+
+ False Discovery Rate or FDR tries to control the expected proportion of null hypotheses that we falsely reject in multiple hypotheses testing. In contrast, the Bonferroni method controlled the probability of making at least one type I error.
+ 
+ Controlling FDR does not increase the probability of making false negative errors the way the Bonferroni correction might. The disadvantage of FDR or Benjamini-Hochberg method is that it assumes that tests are independent, but this might not true for gene expression in which multiple genes can cause an event. Bonferroni does not make this assumption.
+ 
+
+4.
+
+ Benjamini-Hochberg method for controlling FDR considers the sorted list of p-values computed for the 10000 genes we have. In ascending order, it looks for the largest $i$ for which the $i$th p-value in the ordered list is smaller than or equal to $i \times \frac{\alpha}{m}$ where $m=10000$. For such value $k$, the first $k$ $H_{0}$s are rejected.
+ 
+ In other words, FDR tightens the criteria for which we can reject the null hypothesis as more p-values are considered.
+
+
+### Q3 part 2: Practical Questions
+The GSE7621 Series Matrix txt file is first read using Bioconductor's GEOquery.
+```{r}
+source("http://bioconductor.org/biocLite.R")
+biocLite("GEOquery")
+library("GEOquery")
+gse.7621=getGEO(filename="GSE7621_series_matrix.txt")
+
+```
+Extracting the gene expression matrix from gse.7621 ExpressionSet object after removing the empty rows.
+```{r}
+exp.data <- exprs(gse.7621)
+exp.data <- na.omit(exp.data)
+sample_names <- colnames(exp.data)
+```
+As explained in the file's header, gene expressions for 16 Parkinson disease patients and 9 controls are given. t-tests are performed for each row by considering these two groups.
+```{r}
+p.values <- c()
+for (row in 1:dim(exp.data)[1]) {
+  p.values <- c(p.values, t.test(exp.data[row, 1:9], exp.data[row, 10:25])$p.value)
+}
+```
+
+
+Without any correction, 9791 p-values are deemed significant.
+```{r}
+# uncorrected p-values
+alpha = 0.1
+sum(p.values < alpha)
+```
+
+By adjusting the p-values using Bonferroni method, only 3 p-values are considered signifcant.
+```{r}
+# Bonferroni Correction
+sum(p.values < alpha / length(p.values))
+```
+
+On the other hand, Benjamini-Hochberg declares that 199 p-values are significant. This shows that why we consider the Bonferroni method to be conservative.
+```{r}
+# BH Method
+sorted.p.values <- sort(p.values)
+
+for (i in 1:length(sorted.p.values)) {
+  if (sorted.p.values[i] <= i * (alpha / length(sorted.p.values))) {
+    k <- i
+  }
+}
+
+k
+```
+
+At last, I used GEO2R. I partitioned the samples into two groups of 9 and 16 for control and patient. Then GEO2R processed the data and I saved the adjusted(using Benjamini-Hochberg) p-values in geo2r.txt. Around 46 p-values were declared significant by GEO2R.
+```{r}
+# Reading geo2r results
+geo2r.adjusted.p.values <- read.table("geo2r.txt", header = TRUE, sep = "\t")
+sum(geo2r.adjusted.p.values$adj.P.Val < alpha)
+```
+
+## Question 4: Shared Ancestry
+
+According to the coalescent model, the probability that an offspring has the immunity gene is $\frac{1}{k}$, while the probability of not recieving that gene in the coalescent model is $\frac{k-1}{k}$. We want to find the expected number of offsprings after a few generations that have this gene. Let's define random variables $Y$ and $x_{i}$. $Y$ is the number of immune individuals in a population of $n$ that are descendants of the original population of $k$.  $x_{i}$ can be either one or zero and shows whether $i$th individual in the population is immune or not. We can write the probability of having $m$ immune individuals in this population as follows.
+
+
+$$ Pr(Y=m)=\binom{n}{m}(\frac{k-1}{k})^{n-m}(\frac{1}{k})^{m} $$
+ $\binom{n}{m}$ means we are considering all combinations of m individuals from a population of n surviving.
+Now we want to find the expected value and variance of $X$.
+$$ E(Y)=\sum i \, Pr(Y=i) = \sum_{i=0}^{n}i \, \binom{n}{i}(\frac{k-1}{k})^{n-i}(\frac{1}{k})^{i}$$
+$$ =\frac{n}{k^n}\sum_{i=1}^{n}\binom{n-1}{i-1}(k-1)^{n-i}$$
+
+$$ =\frac{n}{k^n}(1+(k-1))^{n-1}=\frac{n}{k} $$
+
+As for variance, considering $Y$ and $x_{i}$ we can write $Var(Y)=Var(\sum x_{i})$ as $x_{i}$s are independent from each other. Also, $Pr(x_{i})=\frac{1}{k}\rightarrow Var(x_{i})=\frac{k-1}{k}\frac{1}{k}$  due to the coalescent model. Then we can write:
+
+$$ Var(Y)=Var(\sum_{i=1}^{n} x_{i})=n \, Var(x_{i})=n \, \frac{k-1}{k}\frac{1}{k} = n \, \frac{k-1}{k^2}$$
+
+
+
+## Question 5: GWAS
+### Step 1
+I choose to study lactose intolerance.
+```{r}
+library(rsnps)
+library(h2o)
+h2o.init()
+plot(cars)
+```
+
+I only consider two variants of lactose intolerance phenotype, people who declared they are either "lactose-tolerant" or "lactose-intolerant"
+```{r}
+data <- users(df=TRUE)
+
+lactose.tolerance.users <- phenotypes_byid(phenotypeid = 2, return_ = 'users')
+known.types <- phenotypes_byid(phenotypeid = 2, return_ = 'knownvars')
+
+tolerant.user.ids <- lactose.tolerance.users[
+  lactose.tolerance.users$variation == "lactose-tolerant",]$user_id
+intolerant.user.ids <- lactose.tolerance.users[
+  lactose.tolerance.users$variation == "lactose-intolerant",]$user_id
+
+# Omitting Null values from the data
+intolerant.user.data <- na.omit(data[[1]][match(intolerant.user.ids, data[[1]]$id), ])
+tolerant.user.data <- na.omit(data[[1]][match(tolerant.user.ids, data[[1]]$id), ])
+
+# extracting links to genotype data files
+intolerant.users.dl.link <- intolerant.user.data$genotypes.download_url #1
+tolerant.users.dl.link <- tolerant.user.data$genotypes.download_url #0
+
+
+users.ids <- c(tolerant.user.data$id, intolerant.user.data$id)
+users.tolerance <- c(as.vector(matrix(0,nrow=7)), as.vector(matrix(1,nrow=7)))
+users.dl.link <- c(tolerant.users.dl.link, intolerant.users.dl.link)
+```
+
+I create a list call *user.genotypes* that holds the genotype data of users I'm going to analyze.
+```{r}
+user.genotypes <- list()
+#setwd("/Users/septp/Desktop/bio-r/bio-hw5")
+
+for (i in 1:length(users.dl.link)) {
+  user.genotypes[[users.ids[i]]] <- 
+    fetch_genotypes(users.dl.link[i], rows = -1) 
+}
+
+save(user.genotypes, file = "usersGenotypes.RData")
+
+```
+
+By checking the length of different genotype SNPs for some users, it can be seen that differnt sets of SNPs are saved for different users. So should only keep the data for SNPs that exist in all users' genotype data. 
+```{r}
+users.snps <- user.genotypes[[users.ids[1]]]$rsid
+for( id in users.ids[2:length(users.ids)] ){
+  users.snps <- intersect(user.genotypes[[id]]$rsid, users.snps)
+}
+
+
+```
+
+Now, we want to put all genotype data in a single data frame. In this data frame, each row contains SNP data for a user.
+
+First I create a matrix and for each user, the SNP data for shared SNPs is pasted into it. Then this matrix is converted to a data frame using *as.data.frame*. *stringsAsFactors = FALSE* specifies that R should keep genotype data as character type not factors.
+```{r}
+users.genotype.mat <- matrix(ncol = length(users.snps), nrow = length(users.ids))
+
+for (i in 1:length(users.ids)) {
+  users.genotype.mat[i,] <- user.genotypes[[users.ids[i]]]$genotype[match(users.snps, user.genotypes[[users.ids[i]]]$rsid)]
+}
+
+users.genotype.frame <- as.data.frame(users.genotype.mat, stringsAsFactors = FALSE)
+rownames(users.genotype.frame) <- users.ids
+colnames(users.genotype.frame) <- users.snps
+
+```
+
+## step 3
+As the phenotype we are studying only has two variants(tolerant or intolerant), logistic regression should be used. *glm* and *family=binomial(link='logit')* achieve this. For each column(SNP) a model is trained.
+```{r}
+users.genotype.frame$tolerance <- users.tolerance
+
+for (i in 1:length(users.snps)) {
+  model <- glm(tolerance ~.,family=binomial(link='logit'),data=users.genotype.frame[, i])
+  
+}
+# For checking the p-value model$p.value can be used
+```
+
+## Step 4
+LASSO compared with ridge regression is useful when we want to do variable selection as it will set some of the coefficients to zero. This can be benificial if only a subset of our predictors actually affect the response and predictors are not highly correlated with one another. LASSO is more interpretable as a result of reduced complexity of the model.
+
+Ridge regression does not do sparse selection the way LASSO does. It penalizes large coefficients and shrinks them, without setting them to zero.
+
+Elasticnet uses both penalty terms of LASSO and ridge regression, so it is a compromise between these two shrinking methods. The advantage of elasticnet can be seen in cases where predictos are highly correlated. For two such predictos LASSO usually selects one of them and sets the coefficient of other to zero. Ridge reduces both coefficients so their values become close to each other. Elasticnet tries to do both at the same time.
+
+I think this is why elasticnet is should be used here. We know that genotypes are affected by a variety of genes being active and influencing each other. We can assume that same is true here for SNPs and phenotypes and some SNPs are highly correlated.
+
+### Step 5
+
+
+### Step 6
+
+
+### Step 7
+
+

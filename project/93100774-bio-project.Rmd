@@ -1,0 +1,924 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+# Intro to Bioinformatics
+# Final Project: Ebola Virus Phylogeny Tree
+## Sepehr Torab Parhiz
+## 93100774
+https://github.com/sepehrtp/bio-project
+
+```{r}
+source("https://bioconductor.org/biocLite.R")
+biocLite("Biostrings")
+library("Biobase", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library("BiocGenerics", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library("ggplot2", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library("Biostrings")
+library("phangorn", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+
+```
+
+
+## 2.2 Gene Extraction
+
+```{r}
+# Read genome data from fasta files
+reston.genome = readDNAStringSet("BioProjectFiles/Reston_genome.fasta")
+zaire.genome = readDNAStringSet("BioProjectFiles/Zaire_genome.fasta")
+sudan.genome = readDNAStringSet("BioProjectFiles/Sudan_genome.fasta")
+tai.genome = readDNAStringSet("BioProjectFiles/TaiForest_genome.fasta")
+bundi.genome = readDNAStringSet("BioProjectFiles/Bundibugyo_genome.fasta")
+marburg.genes = readDNAStringSet("BioProjectFiles/Marburg_Genes.fasta")
+marburg.genome = readDNAStringSet("BioProjectFiles/Marburg_genome.fasta")
+
+```
+
+## Finding Genes from Marburg gene data
+```{r}
+# substitution matrix specifies how matches and mismatces are scored in alignment
+mat <- nucleotideSubstitutionMatrix(match = 1, mismatch = -1, baseOnly = TRUE)
+
+# Finding Reston genes
+# offset+1, offset - 200 and length*3 are added to cover a larger area where the genes should be
+reston.NP.align <- pairwiseAlignment(pattern = subseq(reston.genome, start = marburg.genes$NP@offset+1, width = marburg.genes$NP@length*3),
+                  subject = marburg.genes$NP,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+# local-global is used as we are aligning consecutive subsequence of the marburg gene to the genome
+reston.VP35.align <- pairwiseAlignment(pattern = subseq(reston.genome, start = marburg.genes$VP35@offset - 200, width = marburg.genes$VP35@length*3),
+                  subject = marburg.genes$VP35,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+reston.VP40.align <- pairwiseAlignment(pattern = subseq(reston.genome, start = marburg.genes$VP40@offset - 200, width = marburg.genes$VP40@length*3),
+                  subject = marburg.genes$VP40,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+reston.GP.align <- pairwiseAlignment(pattern = subseq(reston.genome, start = marburg.genes$GP@offset - 200, width = marburg.genes$GP@length*3),
+                  subject = marburg.genes$GP,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+reston.VP30.align <- pairwiseAlignment(pattern = subseq(reston.genome, start = marburg.genes$VP30@offset - 200, width = marburg.genes$VP30@length*3),
+                  subject = marburg.genes$VP30,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+reston.VP24.align <- pairwiseAlignment(pattern = subseq(reston.genome, start = marburg.genes$VP24@offset - 200, width = marburg.genes$VP24@length*3),
+                  subject = marburg.genes$VP24,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+reston.L.align <- pairwiseAlignment(pattern = subseq(reston.genome, start = marburg.genes$L@offset - 200, end = reston.genome@ranges@width),
+                  subject = marburg.genes$L,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+```
+
+
+```{r}
+# Finding Zaire genes
+zaire.NP.align <- pairwiseAlignment(pattern = subseq(zaire.genome, start = marburg.genes$NP@offset+1, width = marburg.genes$NP@length*3),
+                  subject = marburg.genes$NP,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+zaire.VP35.align <- pairwiseAlignment(pattern = subseq(zaire.genome, start = marburg.genes$VP35@offset - 200, width = marburg.genes$VP35@length*3),
+                  subject = marburg.genes$VP35,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+zaire.VP40.align <- pairwiseAlignment(pattern = subseq(zaire.genome, start = marburg.genes$VP40@offset - 200, width = marburg.genes$VP40@length*3),
+                  subject = marburg.genes$VP40,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+zaire.GP.align <- pairwiseAlignment(pattern = subseq(zaire.genome, start = marburg.genes$GP@offset - 200, width = marburg.genes$GP@length*3),
+                  subject = marburg.genes$GP,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+zaire.VP30.align <- pairwiseAlignment(pattern = subseq(zaire.genome, start = marburg.genes$VP30@offset - 200, width = marburg.genes$VP30@length*3),
+                  subject = marburg.genes$VP30,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+zaire.VP24.align <- pairwiseAlignment(pattern = subseq(zaire.genome, start = marburg.genes$VP24@offset - 200, width = marburg.genes$VP24@length*3),
+                  subject = marburg.genes$VP24,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+zaire.L.align <- pairwiseAlignment(pattern = subseq(zaire.genome, start = marburg.genes$L@offset - 200, end = zaire.genome@ranges@width),
+                  subject = marburg.genes$L,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+```
+
+
+
+```{r}
+# Finding Sudan genes
+sudan.NP.align <- pairwiseAlignment(pattern = subseq(sudan.genome, start = marburg.genes$NP@offset+1, width = marburg.genes$NP@length*3),
+                  subject = marburg.genes$NP,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+sudan.VP35.align <- pairwiseAlignment(pattern = subseq(sudan.genome, start = marburg.genes$VP35@offset - 200, width = marburg.genes$VP35@length*3),
+                  subject = marburg.genes$VP35,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+sudan.VP40.align <- pairwiseAlignment(pattern = subseq(sudan.genome, start = marburg.genes$VP40@offset - 200, width = marburg.genes$VP40@length*3),
+                  subject = marburg.genes$VP40,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+sudan.GP.align <- pairwiseAlignment(pattern = subseq(sudan.genome, start = marburg.genes$GP@offset - 200, width = marburg.genes$GP@length*3),
+                  subject = marburg.genes$GP,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+sudan.VP30.align <- pairwiseAlignment(pattern = subseq(sudan.genome, start = marburg.genes$VP30@offset - 200, width = marburg.genes$VP30@length*3),
+                  subject = marburg.genes$VP30,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+sudan.VP24.align <- pairwiseAlignment(pattern = subseq(sudan.genome, start = marburg.genes$VP24@offset - 200, width = marburg.genes$VP24@length*3),
+                  subject = marburg.genes$VP24,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+sudan.L.align <- pairwiseAlignment(pattern = subseq(sudan.genome, start = marburg.genes$L@offset - 200, end = sudan.genome@ranges@width),
+                  subject = marburg.genes$L,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+```
+
+
+```{r}
+# Finding Tai-Forest genes
+tai.NP.align <- pairwiseAlignment(pattern = subseq(tai.genome, start = marburg.genes$NP@offset+1, width = marburg.genes$NP@length*3),
+                  subject = marburg.genes$NP,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+tai.VP35.align <- pairwiseAlignment(pattern = subseq(tai.genome, start = marburg.genes$VP35@offset - 200, width = marburg.genes$VP35@length*3),
+                  subject = marburg.genes$VP35,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+tai.VP40.align <- pairwiseAlignment(pattern = subseq(tai.genome, start = marburg.genes$VP40@offset - 200, width = marburg.genes$VP40@length*3),
+                  subject = marburg.genes$VP40,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+tai.GP.align <- pairwiseAlignment(pattern = subseq(tai.genome, start = marburg.genes$GP@offset - 200, width = marburg.genes$GP@length*3),
+                  subject = marburg.genes$GP,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+tai.VP30.align <- pairwiseAlignment(pattern = subseq(tai.genome, start = marburg.genes$VP30@offset - 200, width = marburg.genes$VP30@length*3),
+                  subject = marburg.genes$VP30,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+tai.VP24.align <- pairwiseAlignment(pattern = subseq(tai.genome, start = marburg.genes$VP24@offset - 200, width = marburg.genes$VP24@length*3),
+                  subject = marburg.genes$VP24,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+tai.L.align <- pairwiseAlignment(pattern = subseq(tai.genome, start = marburg.genes$L@offset - 200, end = tai.genome@ranges@width),
+                  subject = marburg.genes$L,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+```
+
+
+```{r}
+# Finding Bundi genes
+bundi.NP.align <- pairwiseAlignment(pattern = subseq(bundi.genome, start = marburg.genes$NP@offset+1, width = marburg.genes$NP@length*3),
+                  subject = marburg.genes$NP,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+bundi.VP35.align <- pairwiseAlignment(pattern = subseq(bundi.genome, start = marburg.genes$VP35@offset - 200, width = marburg.genes$VP35@length*3),
+                  subject = marburg.genes$VP35,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+bundi.VP40.align <- pairwiseAlignment(pattern = subseq(bundi.genome, start = marburg.genes$VP40@offset - 200, width = marburg.genes$VP40@length*3),
+                  subject = marburg.genes$VP40,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+bundi.GP.align <- pairwiseAlignment(pattern = subseq(bundi.genome, start = marburg.genes$GP@offset - 200, width = marburg.genes$GP@length*3),
+                  subject = marburg.genes$GP,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+bundi.VP30.align <- pairwiseAlignment(pattern = subseq(bundi.genome, start = marburg.genes$VP30@offset - 200, width = marburg.genes$VP30@length*3),
+                  subject = marburg.genes$VP30,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+bundi.VP24.align <- pairwiseAlignment(pattern = subseq(bundi.genome, start = marburg.genes$VP24@offset - 200, width = marburg.genes$VP24@length*3),
+                  subject = marburg.genes$VP24,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+
+
+
+bundi.L.align <- pairwiseAlignment(pattern = subseq(bundi.genome, start = marburg.genes$L@offset - 200, end = bundi.genome@ranges@width),
+                  subject = marburg.genes$L,
+                  type = "local-global",
+                  substitutionMatrix = mat,
+                  gapOpening = 1,
+                  gapExtension = 1)
+```
+
+
+```{r}
+reston.NP.seq <- subseq(reston.genome,
+                        start = reston.NP.align@pattern@range@start, 
+                        width =reston.NP.align@pattern@range@width)
+reston.VP35.seq <- subseq(reston.genome,
+                        start = reston.VP35.align@pattern@range@start, 
+                        width =reston.VP35.align@pattern@range@width)
+reston.VP40.seq <- subseq(reston.genome,
+                        start = reston.VP40.align@pattern@range@start, 
+                        width =reston.VP40.align@pattern@range@width)
+reston.GP.seq <- subseq(reston.genome,
+                        start = reston.GP.align@pattern@range@start, 
+                        width =reston.GP.align@pattern@range@width)
+reston.VP30.seq <- subseq(reston.genome,
+                        start = reston.VP30.align@pattern@range@start, 
+                        width =reston.VP30.align@pattern@range@width)
+reston.VP24.seq <- subseq(reston.genome,
+                        start = reston.VP24.align@pattern@range@start, 
+                        width =reston.VP24.align@pattern@range@width)
+reston.L.seq <- subseq(reston.genome,
+                        start = reston.L.align@pattern@range@start, 
+                        width =reston.L.align@pattern@range@width)
+
+
+tai.NP.seq <- subseq(tai.genome,
+                        start = tai.NP.align@pattern@range@start, 
+                        width =tai.NP.align@pattern@range@width)
+tai.VP35.seq <- subseq(tai.genome,
+                        start = tai.VP35.align@pattern@range@start, 
+                        width =tai.VP35.align@pattern@range@width)
+tai.VP40.seq <- subseq(tai.genome,
+                        start = tai.VP40.align@pattern@range@start, 
+                        width =tai.VP40.align@pattern@range@width)
+tai.GP.seq <- subseq(tai.genome,
+                        start = tai.GP.align@pattern@range@start, 
+                        width =tai.GP.align@pattern@range@width)
+tai.VP30.seq <- subseq(tai.genome,
+                        start = tai.VP30.align@pattern@range@start, 
+                        width =tai.VP30.align@pattern@range@width)
+tai.VP24.seq <- subseq(tai.genome,
+                        start = tai.VP24.align@pattern@range@start, 
+                        width =tai.VP24.align@pattern@range@width)
+tai.L.seq <- subseq(tai.genome,
+                        start = tai.L.align@pattern@range@start, 
+                        width =tai.L.align@pattern@range@width)
+
+
+sudan.NP.seq <- subseq(sudan.genome,
+                        start = sudan.NP.align@pattern@range@start, 
+                        width =sudan.NP.align@pattern@range@width)
+sudan.VP35.seq <- subseq(sudan.genome,
+                        start = sudan.VP35.align@pattern@range@start, 
+                        width =sudan.VP35.align@pattern@range@width)
+sudan.VP40.seq <- subseq(sudan.genome,
+                        start = sudan.VP40.align@pattern@range@start, 
+                        width =sudan.VP40.align@pattern@range@width)
+sudan.GP.seq <- subseq(sudan.genome,
+                        start = sudan.GP.align@pattern@range@start, 
+                        width =sudan.GP.align@pattern@range@width)
+sudan.VP30.seq <- subseq(sudan.genome,
+                        start = sudan.VP30.align@pattern@range@start, 
+                        width =sudan.VP30.align@pattern@range@width)
+sudan.VP24.seq <- subseq(sudan.genome,
+                        start = sudan.VP24.align@pattern@range@start, 
+                        width =sudan.VP24.align@pattern@range@width)
+sudan.L.seq <- subseq(sudan.genome,
+                        start = sudan.L.align@pattern@range@start, 
+                        width =sudan.L.align@pattern@range@width)
+
+
+zaire.NP.seq <- subseq(zaire.genome,
+                        start = zaire.NP.align@pattern@range@start, 
+                        width =zaire.NP.align@pattern@range@width)
+zaire.VP35.seq <- subseq(zaire.genome,
+                        start = zaire.VP35.align@pattern@range@start, 
+                        width =zaire.VP35.align@pattern@range@width)
+zaire.VP40.seq <- subseq(zaire.genome,
+                        start = zaire.VP40.align@pattern@range@start, 
+                        width =zaire.VP40.align@pattern@range@width)
+zaire.GP.seq <- subseq(zaire.genome,
+                        start = zaire.GP.align@pattern@range@start, 
+                        width =zaire.GP.align@pattern@range@width)
+zaire.VP30.seq <- subseq(zaire.genome,
+                        start = zaire.VP30.align@pattern@range@start, 
+                        width =zaire.VP30.align@pattern@range@width)
+zaire.VP24.seq <- subseq(zaire.genome,
+                        start = zaire.VP24.align@pattern@range@start, 
+                        width =zaire.VP24.align@pattern@range@width)
+zaire.L.seq <- subseq(zaire.genome,
+                        start = zaire.L.align@pattern@range@start, 
+                        width =zaire.L.align@pattern@range@width)
+
+
+bundi.NP.seq <- subseq(bundi.genome,
+                        start = bundi.NP.align@pattern@range@start, 
+                        width =bundi.NP.align@pattern@range@width)
+bundi.VP35.seq <- subseq(bundi.genome,
+                        start = bundi.VP35.align@pattern@range@start, 
+                        width =bundi.VP35.align@pattern@range@width)
+bundi.VP40.seq <- subseq(bundi.genome,
+                        start = bundi.VP40.align@pattern@range@start, 
+                        width =bundi.VP40.align@pattern@range@width)
+bundi.GP.seq <- subseq(bundi.genome,
+                        start = bundi.GP.align@pattern@range@start, 
+                        width =bundi.GP.align@pattern@range@width)
+bundi.VP30.seq <- subseq(bundi.genome,
+                        start = bundi.VP30.align@pattern@range@start, 
+                        width =bundi.VP30.align@pattern@range@width)
+bundi.VP24.seq <- subseq(bundi.genome,
+                        start = bundi.VP24.align@pattern@range@start, 
+                        width =bundi.VP24.align@pattern@range@width)
+bundi.L.seq <- subseq(bundi.genome,
+                        start = bundi.L.align@pattern@range@start, 
+                        width =bundi.L.align@pattern@range@width)
+
+bundi.genes <- c(bundi.NP.seq, bundi.VP35.seq, 
+                 bundi.VP40.seq, bundi.GP.seq,
+                 bundi.VP30.seq, bundi.VP24.seq,
+                 bundi.L.seq)
+
+reston.genes <- c(reston.NP.seq, reston.VP35.seq, 
+                 reston.VP40.seq, reston.GP.seq,
+                 reston.VP30.seq, reston.VP24.seq,
+                 reston.L.seq)
+
+zaire.genes <- c(zaire.NP.seq, zaire.VP35.seq, 
+                 zaire.VP40.seq, zaire.GP.seq,
+                 zaire.VP30.seq, zaire.VP24.seq,
+                 zaire.L.seq)
+
+tai.genes <- c(tai.NP.seq, tai.VP35.seq, 
+                 tai.VP40.seq, tai.GP.seq,
+                 tai.VP30.seq, tai.VP24.seq,
+                 tai.L.seq)
+
+sudan.genes <- c(sudan.NP.seq, sudan.VP35.seq, 
+                 sudan.VP40.seq, sudan.GP.seq,
+                 sudan.VP30.seq, sudan.VP24.seq,
+                 sudan.L.seq)
+
+
+```
+```{r}
+NP.genes <- c(reston.NP.seq, zaire.NP.seq,
+              sudan.NP.seq, tai.NP.seq,
+              bundi.NP.seq)
+
+VP35.genes <- c(reston.VP35.seq, zaire.VP35.seq,
+              sudan.VP35.seq, tai.VP35.seq,
+              bundi.VP35.seq)
+
+VP40.genes <- c(reston.VP40.seq, zaire.VP40.seq,
+              sudan.VP40.seq, tai.VP40.seq,
+              bundi.VP40.seq)
+
+VP24.genes <- c(reston.VP24.seq, zaire.VP24.seq,
+              sudan.VP24.seq, tai.VP24.seq,
+              bundi.VP24.seq)
+
+VP30.genes <- c(reston.VP30.seq, zaire.VP30.seq,
+              sudan.VP30.seq, tai.VP30.seq,
+              bundi.VP30.seq)
+
+GP.genes <- c(reston.GP.seq, zaire.GP.seq,
+              sudan.GP.seq, tai.GP.seq,
+              bundi.GP.seq)
+
+L.genes <- c(reston.L.seq, zaire.L.seq,
+              sudan.L.seq, tai.L.seq,
+              bundi.L.seq)
+```
+
+## 2.3 Gene Alignment & Distance Matrices
+```{r}
+# We can change the substitution matrix and gap penalties so that pairwiseAlignment returns the edit distance of two strings. that is why match score is set to zero.
+mat <- nucleotideSubstitutionMatrix(match = 0, mismatch = -1, baseOnly = TRUE)
+
+NP.dist.mat <- matrix(0, nrow = 5, ncol = 5)
+rownames(NP.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+colnames(NP.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+
+VP35.dist.mat <- matrix(0, nrow = 5, ncol = 5)
+rownames(VP35.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+colnames(VP35.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+
+VP40.dist.mat <- matrix(0, nrow = 5, ncol = 5)
+rownames(VP40.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+colnames(VP40.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+
+GP.dist.mat <- matrix(0, nrow = 5, ncol = 5)
+rownames(GP.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+colnames(GP.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+
+VP30.dist.mat <- matrix(0, nrow = 5, ncol = 5)
+rownames(VP30.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+colnames(VP30.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+
+VP24.dist.mat <- matrix(0, nrow = 5, ncol = 5)
+rownames(VP24.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+colnames(VP24.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+
+L.dist.mat <- matrix(0, nrow = 5, ncol = 5)
+rownames(L.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+colnames(L.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+
+# As we are aligning two genes, we use global alignment or needleman-wuntsch
+for (i in 1:5) {
+  for (j in 1:5) {
+    NP.dist.mat[i, j] <- -pairwiseAlignment(type = "global",
+                                         substitutionMatrix = mat,
+                                         gapOpening = 1,
+                                         gapExtension = 1,
+                                         pattern = NP.genes[i],
+                                         subject = NP.genes[j])@score
+  }
+}
+
+for (i in 1:5) {
+  for (j in 1:5) {
+    GP.dist.mat[i, j] <- -pairwiseAlignment(type = "global",
+                                         substitutionMatrix = mat,
+                                         gapOpening = 1,
+                                         gapExtension = 1,
+                                         pattern = GP.genes[i],
+                                         subject = GP.genes[j])@score
+  }
+}
+
+for (i in 1:5) {
+  for (j in 1:5) {
+    L.dist.mat[i, j] <- -pairwiseAlignment(type = "global",
+                                         substitutionMatrix = mat,
+                                         gapOpening = 1,
+                                         gapExtension = 1,
+                                         pattern = L.genes[i],
+                                         subject = L.genes[j])@score
+  }
+}
+
+for (i in 1:5) {
+  for (j in 1:5) {
+    VP30.dist.mat[i, j] <- -pairwiseAlignment(type = "global",
+                                         substitutionMatrix = mat,
+                                         gapOpening = 1,
+                                         gapExtension = 1,
+                                         pattern = VP30.genes[i],
+                                         subject = VP30.genes[j])@score
+  }
+}
+
+for (i in 1:5) {
+  for (j in 1:5) {
+    VP35.dist.mat[i, j] <- -pairwiseAlignment(type = "global",
+                                         substitutionMatrix = mat,
+                                         gapOpening = 1,
+                                         gapExtension = 1,
+                                         pattern = VP35.genes[i],
+                                         subject = VP35.genes[j])@score
+  }
+}
+
+for (i in 1:5) {
+  for (j in 1:5) {
+    VP40.dist.mat[i, j] <- -pairwiseAlignment(type = "global",
+                                         substitutionMatrix = mat,
+                                         gapOpening = 1,
+                                         gapExtension = 1,
+                                         pattern = VP40.genes[i],
+                                         subject = VP40.genes[j])@score
+  }
+}
+
+
+for (i in 1:5) {
+  for (j in 1:5) {
+    VP24.dist.mat[i, j] <- -pairwiseAlignment(type = "global",
+                                         substitutionMatrix = mat,
+                                         gapOpening = 1,
+                                         gapExtension = 1,
+                                         pattern = VP24.genes[i],
+                                         subject = VP24.genes[j])@score
+  }
+}
+
+```
+
+```{r}
+# Saving distance matrices for each gene as a csv file
+write.table(NP.dist.mat,file="NP.dist.mat.csv")
+write.table(GP.dist.mat,file="GP.dist.mat.csv")
+write.table(L.dist.mat,file="L.dist.mat.csv")
+write.table(VP30.dist.mat,file="VP30.dist.mat.csv")
+write.table(VP35.dist.mat,file="VP35.dist.mat.csv")
+write.table(VP40.dist.mat,file="VP40.dist.mat.csv")
+write.table(VP24.dist.mat,file="VP24.dist.mat.csv")
+```
+# 3 Phylogeny Tree
+## 3.1 Phylogeny Tree for each gene
+```{r}
+# Using upgma and nj functions, we make trees out of distance matrices
+tree.upgma.NP = upgma(NP.dist.mat)
+tree.upgma.GP = upgma(GP.dist.mat)
+tree.upgma.L = upgma(L.dist.mat)
+tree.upgma.VP30 = upgma(VP30.dist.mat)
+tree.upgma.VP35 = upgma(VP35.dist.mat)
+tree.upgma.VP24 = upgma(VP24.dist.mat)
+tree.upgma.VP40 = upgma(VP40.dist.mat)
+
+tree.NJ.NP = NJ(NP.dist.mat)
+tree.NJ.GP = NJ(GP.dist.mat)
+tree.NJ.L = NJ(L.dist.mat)
+tree.NJ.VP30 = NJ(VP30.dist.mat)
+tree.NJ.VP35 = NJ(VP35.dist.mat)
+tree.NJ.VP24 = NJ(VP24.dist.mat)
+tree.NJ.VP40 = NJ(VP40.dist.mat)
+
+plot(tree.upgma.NP, main='UPGMA_geneNP')
+png('UPGMA_geneNP.png')
+dev.off()
+
+plot(tree.upgma.GP, main='UPGMA_geneGP.png')
+png('UPGMA_geneGP.png')
+dev.off()
+
+plot(tree.upgma.L, main='UPGMA_geneL.png')
+png('UPGMA_geneL.png')
+dev.off()
+
+plot(tree.upgma.VP30, main='UPGMA_geneVP30.png')
+png('UPGMA_geneVP30.png')
+dev.off()
+
+plot(tree.upgma.VP35, main='UPGMA_geneVP35.png')
+png('UPGMA_geneVP35.png')
+dev.off()
+
+plot(tree.upgma.VP40, main='UPGMA_geneVP40.png')
+png('UPGMA_geneVP40.png')
+dev.off()
+
+plot(tree.upgma.VP24, main='UPGMA_geneVP24.png')
+png('UPGMA_geneVP24.png')
+dev.off()
+
+plot(tree.NJ.NP, main='NJ_geneNP.png')
+png('NJ_geneNP.png')
+dev.off()
+
+plot(tree.NJ.GP, main='NJ_geneGP.png')
+png('NJ_geneGP.png')
+dev.off()
+
+plot(tree.NJ.L, main='NJ_geneL.png')
+png('NJ_geneL.png')
+dev.off()
+
+plot(tree.NJ.VP30, main='NJ_geneVP30.png')
+png('NJ_geneVP30.png')
+dev.off()
+
+plot(tree.NJ.VP35, main='NJ_geneVP35.png')
+png('NJ_geneVP35.png')
+dev.off()
+
+plot(tree.NJ.VP40, main='NJ_geneVP40.png')
+png('NJ_geneVP40.png')
+dev.off()
+
+plot(tree.NJ.VP24, main='NJ_geneVP24.png')
+png('NJ_geneVP24.png')
+dev.off()
+
+
+```
+## 3.2 Merging Trees
+```{r}
+# p is set to 0.5 so we are using majority vote to decide which clade will be in the merged tree
+tree.upgma.consensus <- consensus(c(tree.upgma.NP, tree.upgma.VP35,
+            tree.upgma.VP40, tree.upgma.GP, 
+            tree.upgma.VP30,tree.upgma.VP24,
+            tree.upgma.L), p = 0.5)
+
+tree.NJ.consensus <- consensus(c(tree.NJ.NP, tree.NJ.VP35,
+            tree.NJ.VP40, tree.NJ.GP, 
+            tree.NJ.VP30,tree.NJ.VP24,
+            tree.NJ.L), p = 0.5)
+plot(tree.upgma.consensus, main="UPGMA Consensus Tree")
+png('"UPGMA Consensus Tree.png')
+dev.off()
+
+plot(tree.NJ.consensus, main="NJ Consensus Tree")
+png('NJ Consensus Tree.png')
+dev.off()
+```
+
+## 3.3 Comparing Phylogeny Trees
+```{r}
+global.dist.mat <- matrix(0, nrow = 5, ncol = 5)
+rownames(global.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+colnames(global.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo")
+genomes <- c(reston.genome, zaire.genome,
+             sudan.genome, tai.genome,
+             bundi.genome)
+
+for (i in 1:5) {
+  for (j in 1:i) {
+    di <- -pairwiseAlignment(type = "global",
+                             substitutionMatrix = mat,
+                             gapOpening = 1,
+                             gapExtension = 1,
+                             pattern = genomes[i],
+                             subject = genomes[j])@score
+    global.dist.mat[i, j] <- di
+    global.dist.mat[j, i] <- di
+    
+  }
+}
+
+tree.upgma.global <- upgma(global.dist.mat)
+plot(tree.upgma.global, main="Global Genome Alignment UPGMA Tree")
+png('UPGMA-global-tree.png')
+dev.off()
+```
+
+## 3.4 The Starting Point
+```{r}
+ebola.strains.dist.mat <- matrix(0, nrow = 6, ncol = 6)
+rownames(ebola.strains.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo", "marburg")
+colnames(ebola.strains.dist.mat) <- c("reston", "zaire",
+                           "sudan", "tai-forest",
+                           "Bundibugyo", "marburg")
+all.genomes <- c(reston.genome, zaire.genome,
+             sudan.genome, tai.genome,
+             bundi.genome, marburg.genome)
+
+for (i in 1:6) {
+  for (j in 1:i) {
+    ali <- pairwiseAlignment(type = "global",
+                             substitutionMatrix = mat,
+                             gapOpening = 1,
+                             gapExtension = 1,
+                             pattern = all.genomes[i],
+                             subject = all.genomes[j])
+    ebola.strains.dist.mat[i, j] <- -ali@score
+    ebola.strains.dist.mat[j, i] <- -ali@score
+    
+  }
+}
+
+tree.upgma.global <- upgma(ebola.strains.dist.mat)
+plot(tree.upgma.global, main="Ebola Strains UPGMA Tree")
+png('UPGMA-ebola-strains-tree.png')
+#dev.off()
+```
+
+# 4 Estimating the Past, Predicting the Future
+## 4.1 Schism
+```{r}
+mat <- nucleotideSubstitutionMatrix(match = 0, mismatch = -1, baseOnly = TRUE)
+
+aligned.reston <- pairwiseAlignment(type = "global",
+                         substitutionMatrix = mat,
+                         gapOpening = 1,
+                         gapExtension = 1,
+                         pattern = reston.genome,
+                         subject = marburg.genome)@pattern
+
+aligned.zaire <- pairwiseAlignment(type = "global",
+                         substitutionMatrix = mat,
+                         gapOpening = 1,
+                         gapExtension = 1,
+                         pattern = zaire.genome,
+                         subject = marburg.genome)@pattern
+
+aligned.sudan <- pairwiseAlignment(type = "global",
+                         substitutionMatrix = mat,
+                         gapOpening = 1,
+                         gapExtension = 1,
+                         pattern = sudan.genome,
+                         subject = marburg.genome)@pattern
+
+aligned.tai <- pairwiseAlignment(type = "global",
+                         substitutionMatrix = mat,
+                         gapOpening = 1,
+                         gapExtension = 1,
+                         pattern = tai.genome,
+                         subject = marburg.genome)@pattern
+
+aligned.bundi <- pairwiseAlignment(type = "global",
+                         substitutionMatrix = mat,
+                         gapOpening = 1,
+                         gapExtension = 1,
+                         pattern = bundi.genome,
+                         subject = marburg.genome)@pattern
+
+aligned.genomes <- c(aligned.reston, aligned.zaire,
+                     aligned.sudan,  aligned.tai,
+                     aligned.bundi, marburg.genome)
+```
+```{r}
+padded.reston <- paste(c(as.character(aligned.reston),paste(replicate(19818-nchar(aligned.reston),"-"))), collapse="")
+
+padded.sudan <- paste(c(as.character(aligned.sudan),paste(replicate(19818-nchar(aligned.sudan),"-"))), collapse="")
+
+padded.tai <- paste(c(as.character(aligned.tai),paste(replicate(19818-nchar(aligned.tai),"-"))), collapse="")
+
+padded.bundi <- paste(c(as.character(aligned.bundi),paste(replicate(19818-nchar(aligned.bundi),"-"))), collapse="")
+
+padded.marburg <- paste(c(as.character(marburg.genome),paste(replicate(19818-nchar(marburg.genome),"-"))), collapse="")
+```
+
+
+```{r}
+# first try: using dist.dna
+mutation.rate <- 1.9e3
+all.genomes <- c(padded.reston, aligned.zaire, padded.sudan, padded.tai, padded.bundi, padded.marburg)
+
+ 
+genomes.dist.mat <- dist.dna(as.DNAbin.DNAStringSet(all.genomes), "JC69", variance = TRUE, gamma = mutation.rate, as.matrix = TRUE)
+rownames(genomes.dist.mat) <- c("reston", "zaire", "sudan", "tai", "bundi", "marburg")
+colnames(genomes.dist.mat) <- c("reston", "zaire", "sudan", "tai", "bundi", "marburg")
+```
+```{r}
+genomes.dist.mat
+```
+
+```{r}
+#using cophenetic.phylo from ape package
+cophenetic.phylo(tree.upgma.global)
+```
+
+```{r}
+# Distance in years
+cophenetic.phylo(tree.upgma.global) / (1.9e-3)
+```
+

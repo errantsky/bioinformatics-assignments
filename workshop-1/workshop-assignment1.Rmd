@@ -1,0 +1,235 @@
+---
+title: "Introduction to R Workshop"
+author: "Sepehr Torabparhiz 93100774"
+date: "`r Sys.time()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = F)
+```
+
+These files provide detailed road safety data about the circumstances of personal injury road accidents from 2005, the types (including Make and Model) of vehicles involved and the consequential casualties. 
+
+All the data variables are coded rather than containing textual strings. For find detail please see: Road-Accident-Safety-Data-Guide.xls
+
+***
+
+## Activities
+
+***
+### 1. Extract Data from zip file
+
+You can find Stats19_Data_2005-2014.zip in your folder. Please Extract data by **'unzip** function in your folder.
+
+```{r}
+unzip("Stats19_Data_2005-2014.zip") 
+```
+
+
+***
+
+### 2. Import data
+
+After extract data we can see three csv file
+
+* Accidents0514.csv
+
+* Casualties0514.csv
+
+* Vehicles0514.csv
+
+Please import data to R by **read.csv** function
+
+
+```{r}
+library("data.table")
+library("dplyr")
+library("ggplot2")
+library("magrittr")
+acc = fread("Accidents0514.csv") ## Accidents0514.csv data
+cas = fread("Casualties0514.csv") ## Casualties0514.csv data
+veh = fread("Vehicles0514.csv") ## Vehicles0514.csv data
+```
+
+please correct the name of data if you find any problem!
+
+note: for fast read use *fread* in *data.table* package
+note: You can join your two dataframes by merge()
+
+***
+
+### 3. see structure, dimension and first 20 rows of each data
+
+```{r}
+str(acc)
+str(cas)
+str(veh)
+
+dim(acc)
+dim(cas)
+dim(veh)
+
+head(acc, 20)
+head(cas, 20)
+head(veh, 20)
+```
+
+
+***
+
+### 4. sample from data
+
+by use of **sample** function sample 10000 data from acc file
+
+```{r}
+sample <- acc[sample(nrow(acc), 10000), ]
+```
+
+
+***
+
+### 5. Convert time
+Convert time field to int and just keep the hour
+```{r}
+time.to.hour <- function(time.hm) {
+  unlist(strsplit(time.hm, ':'))[1]
+}
+
+hour.column <- sapply(acc$Time, time.to.hour)
+acc$Time <- hour.column
+acc$Time <- as.integer(acc$Time)
+head(acc$Time)
+```
+hint: write a function that work on a single element and then use apply family
+
+### 6. Plot Acident per date
+Plot accidents numbers on each date or time. Is there any pattern?
+
+A: Most accidents happen between 15 o'clock untill around 17:30. There is also a peak of accidents around 8 o'clock in the morning which is probabaly caused by the mass of commuters trying to go to work in the morning.
+
+As for the number of accidents thorugh the 10 year period between 2005 to 2015, there has been a steady decline in the number of accidents as time passes by. if we look at each year, There's big rise in accidents by end of each year which is followed by a big drop in accidents At the start of a new year.
+```{r}
+
+ggplot(acc, aes(x=Time, fill=..count..)) + geom_histogram(bins = 24) + scale_fill_gradient("Count", low="green", high="red") + ggtitle("Accident count by Time of the Day")
+
+acc$Date <- as.Date(acc$Date, "%d/%m/%Y")
+
+ggplot(acc, aes(x=Date, fill=..count..)) + geom_histogram(stat="count", bins = 120) + scale_fill_gradient("Count", low="green", high="red") + ggtitle("Accident count by Date")
+```
+
+
+### 7. Chance of life
+Probability of death for Front seat passengers vs Rear seat passengers
+
+Fatal Casualty Severity is denoted by 1
+
+Front seat is represented by 1 and rear seat by 2
+
+A: It's around 1.7 times more likely to die in a car crash if your sitting in the front of the car.
+```{r}
+death_cases <- cas[Casualty_Severity == 1]
+death_count <- nrow(death_cases)
+
+front_seat_deaths_count <- nrow(death_cases[Car_Passenger == 1])
+rear_seat_deaths_count <- nrow(death_cases[Car_Passenger == 2])
+
+front_seat_death_probability <- front_seat_deaths_count / death_count
+rear_seat_death_probability <- rear_seat_deaths_count / death_count
+front_seat_death_probability / rear_seat_death_probability
+```
+
+
+
+***
+
+### 8. Light and Weather
+plot light and weather factor separetly and together as the cause of the death
+
+A: Most fatal accidents happen in a fine weather with no high winds. So bad weather is not a big factor on whether a car accident was fatal or not.
+
+A sizable portion of fatal accidents happen during daylight, but most of them happen in darkness. Also having the lights on in the darkness does not seem to be very effective in reducing fatalities as death count in darkness with the lights lit closely matches death count in an unlighted area. 
+
+Strangely places that have lights but are unlit during the accidents have much lower fatality rate than those who lack lighting or have them lit!
+```{r}
+ggplot(acc[Accident_Severity==1], aes(x=factor(Weather_Conditions))) + geom_histogram(stat='count', binwidth = 1, bins=10) + scale_y_sqrt() + 
+xlab("Weather Conditions") + ylab("Death Count") +
+scale_x_discrete(breaks=c(-1, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+        labels=c("Data missing", "Fine no high winds","Raining no high winds",
+"Snowing no high winds", "Fine + high winds", "Raining + high winds",
+"Snowing + high winds", "Fog or mist", "Other", "Unknown")) +  
+ggtitle("Fatalities in Different Weather Conditions") +
+  theme(axis.text.x = element_text( size=7, angle=90),
+          axis.text.y = element_text(face="bold", size=10))
+
+ggplot(acc[Accident_Severity==1], aes(x=factor(Light_Conditions))) + geom_histogram(stat='count', binwidth = 1, bins=6) + scale_y_sqrt() + 
+xlab("Light Conditions") + ylab("Death Count") +
+scale_x_discrete(breaks=c(-1, 1, 4, 5, 6, 7), label=c("Data missing", "Daylight",
+"Darkness - lights lit", "Darkness - lights unlit", "Darkness - no lighting",
+"Darkness - lighting unknown")) + 
+ggtitle("Fatalities in Different Light Conditions") +
+  theme(axis.text.x = element_text( size=7, angle=90),
+        axis.text.y = element_text(face="bold", size=10))
+
+
+
+ggplot(acc[Accident_Severity==1], aes(x=factor(Light_Conditions), fill=factor(Weather_Conditions))) + geom_histogram(stat='count', binwidth = 1, bins=6) + scale_y_sqrt() + 
+xlab("Light Conditions") + ylab("Death Count") +
+scale_x_discrete(breaks=c(-1, 1, 4, 5, 6, 7), label=c("Data missing", "Daylight",
+"Darkness - lights lit", "Darkness - lights unlit", "Darkness - no lighting",
+"Darkness - lighting unknown")) + 
+ggtitle("Fatalities in Different Light and Weather Conditions") +
+  theme(axis.text.x = element_text( size=7, angle=90),
+        axis.text.y = element_text(face="bold", size=10))+
+scale_fill_discrete(name="Weather Conditions", breaks=c(-1, 1, 2, 3, 4, 5, 6, 7, 8, 9), labels=c("Data missing", "Fine no high winds","Raining no high winds",
+"Snowing no high winds", "Fine + high winds", "Raining + high winds",
+"Snowing + high winds", "Fog or mist", "Other", "Unknown")) + xlab("Light Conditions")
+```
+
+***
+
+### 9. Driving by Gender!
+
+Men vs. Women: Who Are Safer Drivers? 
+A: Women have a lower rate of fatal accidents.
+
+calculation number of accident by age and plot result
+
+calculation number of accident by age and Severity and plot result
+
+
+A: People in their early twenties have the most accidents. They also have more serious and fatal accidents, even though only a small portions accidents overall are fatal. Number of accidents decrease as people age. 
+
+Young kids have the same rate of accidents as their not drivers. But,  There is a sudden uptick in accidents as they become teenagers.
+```{r}
+male_drivers_in_accident_count <- nrow(cas[Sex_of_Casualty == 1 & Casualty_Class == 1])
+female_drivers_in_accident_count <- nrow(cas[Sex_of_Casualty == 2 & Casualty_Class == 1])
+
+drivers_in_accidents_with_known_gender <- male_drivers_in_accident_count + female_drivers_in_accident_count
+
+if (male_drivers_in_accident_count > female_drivers_in_accident_count){
+  print('Men are worse drivers than women.')
+  
+} else if (female_drivers_in_accident_count > male_drivers_in_accident_count) {
+  print('Women are worse drivers than men.')
+  
+} else 
+  print('Humans are just equally not really good at this regardless of their gender.')
+
+
+ggplot(cas, aes(x=Age_of_Casualty), bins=100) + 
+  geom_histogram() + scale_y_sqrt() + 
+  ylab("Count") + xlab("Age of Casualty") + 
+ggtitle("Age Distribution of Accidents")
+
+
+ggplot(cas, aes(x=Age_of_Casualty, fill = factor(Casualty_Severity)), bins=100) + geom_histogram(position="dodge") + scale_y_sqrt() + ylab("Count") +
+scale_fill_discrete(name="Casualty Severity", breaks=c(1, 2, 3), labels=c("Fatal","Serious", "Slight")) + xlab("Age of Casualty") + 
+ggtitle("Age Distribution of Accidents")
+```
+
+hint: use casualty  data  and Sex_of_Casualty
+
